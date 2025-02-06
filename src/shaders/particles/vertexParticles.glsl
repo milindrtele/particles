@@ -9,6 +9,6 @@ void main(){
     vUv = uv;
     vec4 pos = texture2D(uPosition, vUv);
     vec4 mvPosition = modelViewMatrix * vec4(pos.xyz, 1.);
-    gl_PointSize = 1. * (1. /-mvPosition.z);
+    gl_PointSize = 5. * (1. /-mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
 }

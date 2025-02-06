@@ -62,11 +62,36 @@ export default function App() {
     fboMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uPosition: { value: fboTexture }, // Initialize with DataTexture
+        uInfo: {value: null},
         time: { value: 0 },
       },
       vertexShader: simVertex,
       fragmentShader: simFragment,
     });
+
+    const infoArray = new Float32Array(size * size * 4);
+
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        let index = (i + j * size) * 4;
+        infoArray[index + 0] = 0.5 + Math.random();
+        infoArray[index + 1] = 0.5 + Math.random();
+        infoArray[index + 2] = 0.5 + Math.random();
+        infoArray[index + 3] = 1; // Alpha
+      }
+    }
+
+    const info = new THREE.DataTexture(
+      data,
+      size,
+      size,
+      THREE.RGBAFormat,
+      THREE.FloatType
+    );
+    info.encoding = THREE.NearestFilter;
+    info.encoding = THREE.NearestFilter;
+    info.needsUpdate = true;
+    fboMaterial.uniforms.uInfo.value = info;
 
     const fboMesh = new THREE.Mesh(geometry, fboMaterial);
     fboScene.add(fboMesh);
