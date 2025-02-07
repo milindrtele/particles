@@ -10,5 +10,5 @@ float PI = 3.141592653589793238;
 void main() {
     vec4 pos = texture2D(uPosition, vUv);
 
-    gl_FragColor = vec4(1.);
+    gl_FragColor = vec4(0., 0., 0., 1.);
 }

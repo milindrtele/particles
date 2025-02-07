@@ -5,6 +5,7 @@ uniform sampler2D uInfo;
 uniform vec4 resolution;
 varying vec2 vUv;
 varying vec3 vPosition;
+uniform vec2 uMouse;
 
 float PI = 3.141592653589793238;
 #define PI 3.1415926538
@@ -119,18 +120,25 @@ void main() {
     vec4 pos = texture2D(uPosition, vUv);
     vec4 info = texture2D(uInfo, vUv);
 
+    vec2 mouse = uMouse;//vec2(sin(-time), cos(-time));
+
     float radius = length(pos.xy);
     float circularForce = 1. - smoothstep(0.3, 1.4, abs(pos.x - radius));
     float angle = atan(pos.y, pos.x) - info.y *  0.1 * mix(0.5, 1., circularForce);
 
-    float targetRadius = mix(info.x, 1.8, 0.5 + 0.45 * sin(angle * 2.));
+    float targetRadius = mix(info.x, 1.8, 0.5 + 0.45 * sin(angle * 2. + time * 0.2));
     radius += (targetRadius - radius) * 0.1;
 
 
     vec3 targetPos = vec3(cos(angle), sin(angle), 0.0) * radius;
     pos.xy += (targetPos.xy - pos.xy) * 0.1;
 
-    pos.xy += curl(pos.xyz, time*0.1, 0.1).xy * 0.001;
+    pos.xy += curl(pos.xyz, time*0.1, 0.1).xy * 0.005;
+
+    float dist = length(pos.xy - mouse);
+    vec2 dir = normalize(pos.xy - mouse);
+    pos.xy += dir * 0.1 * smoothstep(0.3, 0.0, dist);
+
     
     gl_FragColor = vec4(pos.xy, 1., 1.);
 }

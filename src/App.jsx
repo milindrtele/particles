@@ -11,8 +11,15 @@ export default function App() {
   let fboScene, fboCamera, fboMaterial;
   let fbo, fbo1; // Ping-pong buffers
   let renderer;
+  let camera;
+  let scene;
 
-  const size = 128;
+  const size = 256;
+
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  let material = null;
 
   function getRenderTarget() {
     return new THREE.WebGLRenderTarget(size, size, {
@@ -62,8 +69,9 @@ export default function App() {
     fboMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uPosition: { value: fboTexture }, // Initialize with DataTexture
-        uInfo: {value: null},
+        uInfo: { value: null },
         time: { value: 0 },
+        uMouse: { value: new THREE.Vector2(0, 0) },
       },
       vertexShader: simVertex,
       fragmentShader: simFragment,
@@ -76,7 +84,7 @@ export default function App() {
         let index = (i + j * size) * 4;
         infoArray[index + 0] = 0.5 + Math.random();
         infoArray[index + 1] = 0.5 + Math.random();
-        infoArray[index + 2] = 1.0;//0.5 + Math.random();
+        infoArray[index + 2] = 1.0; //0.5 + Math.random();
         infoArray[index + 3] = 1.0; // Alpha
       }
     }
@@ -102,10 +110,38 @@ export default function App() {
     renderer.render(fboScene, fboCamera);
   }
 
+  function setupevents() {
+    const planeMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(100, 100),
+      new THREE.MeshBasicMaterial()
+    );
+    scene.add(planeMesh);
+
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    scene.add(ball);
+
+    //planeMesh.rotation.x = Math.PI /180 *90;
+    document.addEventListener("pointermove", (event) => {
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObject(planeMesh);
+      if (intersects.length > 0) {
+        let { x, y } = intersects[0].point;
+        fboMaterial.uniforms.uMouse.value.set(x, y);
+
+        ball.position.set(x, y, 0);
+      }
+    });
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
       0.1,
@@ -116,10 +152,14 @@ export default function App() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
+    renderer.setClearColor(new THREE.Color(0x000000));
+    scene.background = new THREE.Color(0x000000);
+
     camera.position.z = 5;
     const controls = new OrbitControls(camera, renderer.domElement);
 
     setUpFbo();
+    setupevents();
 
     // Particle System
     const count = size ** 2;
@@ -143,7 +183,7 @@ export default function App() {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 
-    const material = new THREE.ShaderMaterial({
+    material = new THREE.ShaderMaterial({
       uniforms: {
         uPosition: { value: fbo.texture }, // Initially use fbo texture
         time: { value: 0 },
