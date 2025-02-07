@@ -76,13 +76,13 @@ export default function App() {
         let index = (i + j * size) * 4;
         infoArray[index + 0] = 0.5 + Math.random();
         infoArray[index + 1] = 0.5 + Math.random();
-        infoArray[index + 2] = 0.5 + Math.random();
-        infoArray[index + 3] = 1; // Alpha
+        infoArray[index + 2] = 1.0;//0.5 + Math.random();
+        infoArray[index + 3] = 1.0; // Alpha
       }
     }
 
     const info = new THREE.DataTexture(
-      data,
+      infoArray,
       size,
       size,
       THREE.RGBAFormat,
