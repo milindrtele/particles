@@ -13,7 +13,6 @@ export default function App() {
   const canvasRef = useRef(null);
   let fboScene, fboCamera, fboMaterial;
   let fbo, fbo1; // Ping-pong buffers
-  let fboInfo, fboInfo1; // Ping-pong buffers
   let renderer;
   let camera;
   let scene;
@@ -28,7 +27,6 @@ export default function App() {
   let data = null;
   let imageDataArray = null;
   let imageData = null;
-  let infoArray = null;
 
   function getRenderTarget() {
     return new THREE.WebGLRenderTarget(size, size, {
@@ -43,23 +41,70 @@ export default function App() {
     fbo = getRenderTarget();
     fbo1 = getRenderTarget();
 
-    fboInfo = getRenderTarget();
-    fboInfo1 = getRenderTarget();
-
     fbo.texture.minFilter = THREE.NearestFilter;
     fbo1.texture.minFilter = THREE.NearestFilter;
-
-    fboInfo.texture.minFilter = THREE.NearestFilter;
-    fboInfo1.texture.minFilter = THREE.NearestFilter;
 
     fboScene = new THREE.Scene();
     fboCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
     const geometry = new THREE.PlaneGeometry(2, 2);
     data = new Float32Array(size * size * 4);
+    // const canvas = document.createElement("canvas");
+    // const ctx = canvas.getContext("2d");
+
+    // const img = new Image();
+    // img.src = "/images/Home seq 3.jpg"; // Replace with your image path
+    // img.crossOrigin = "anonymous"; // Ensure cross-origin images work
+
+    // img.onload = function () {
+    //   canvas.width = size;
+    //   canvas.height = size;
+    //   ctx.drawImage(img, 0, 0, size, size);
+
+    //   const imageData = ctx.getImageData(0, 0, size, size).data;
+    //   console.log(imageData);
+
+    //   for (let j = 0; j < size; j++) {
+    //     for (let i = 0; i < size; i++) {
+    //       let index = (i + j * size) * 4;
+    //       let pixelIndex = (i + (size - j - 1) * size) * 4; // Flip Y-axis for correct orientation
+
+    //       // Normalize positions to [-1, 1] space
+    //       let x = (i / size) * 2 - 1;
+    //       let y = (j / size) * 2 - 1;
+    //       let z = Math.random() * 0.2 - 0.1; // Small random Z offset
+
+    //       // Extract RGB values from imageData
+    //       let r = imageData[pixelIndex] / 255;
+    //       let g = imageData[pixelIndex + 1] / 255;
+    //       let b = imageData[pixelIndex + 2] / 255;
+
+    //       // Store data (x, y, z, alpha)
+    //       data[index + 0] = r; // X
+    //       data[index + 1] = g; // Y
+    //       data[index + 2] = b; // Z depth
+    //       data[index + 3] = 1; // Alpha (opacity)
+    //     }
+    //   }
+
+    //   console.log("Image successfully mapped to data array.");
+    // };
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
         let index = (i + j * size) * 4;
+
+        /////////circle
+        // let theta = Math.random() * Math.PI * 2;
+        // let r = 0.5 + 0.5 * Math.random();
+        // data[index + 0] = r * Math.cos(theta);
+        // data[index + 1] = r * Math.sin(theta);
+        // data[index + 2] = r * Math.sin(theta);
+        // data[index + 3] = 1; // Alpha
+        /////////// Square distribution: Random positions within a [-0.5, 0.5] range
+        // data[index + 0] = Math.random() - 0.5; // X between -0.5 and 0.5
+        // data[index + 1] = Math.random() - 0.5; // Y between -0.5 and 0.5
+        // data[index + 2] = Math.random() - 0.5; // Z between -0.5 and 0.5
+        // data[index + 3] = 1; // Alpha
         ///////////image
         data[index + 0] = i / 100; //imageDataArray[index+0]*5;
         data[index + 1] = j / 100; //imageDataArray[index+1]*5;
@@ -84,13 +129,12 @@ export default function App() {
         uInfo: { value: null },
         time: { value: 0 },
         uMouse: { value: new THREE.Vector2(0, 0) },
-        uGravityBool: { value: true },
       },
       vertexShader: simVertex,
       fragmentShader: simFragment,
     });
 
-    infoArray = new Float32Array(size * size * 4);
+    const infoArray = new Float32Array(size * size * 4);
 
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
@@ -119,48 +163,8 @@ export default function App() {
 
     renderer.setRenderTarget(fbo);
     renderer.render(fboScene, fboCamera);
-
-    renderer.setRenderTarget(fboInfo);
-    renderer.render(fboScene, fboCamera);
-
     renderer.setRenderTarget(fbo1);
     renderer.render(fboScene, fboCamera);
-
-    renderer.setRenderTarget(fboInfo1);
-    renderer.render(fboScene, fboCamera);
-  }
-
-  function setUpInfo() {
-    console.log("Before:", [...infoArray.slice(0, 8)]);
-    for (let i = 0; i < size; i++) {
-      for (let j = 0; j < size; j++) {
-        let index = (i + j * size) * 4;
-        infoArray[index + 0] = i / 100; //imageDataArray[index+0]*5;
-        infoArray[index + 1] = j / 100; //imageDataArray[index+1]*5;
-
-        infoArray[index + 2] = -1 * imageDataArray[index + 0] * 50; //Math.random() - 0.5; // Z between -0.5 and 0.5
-        infoArray[index + 3] = imageDataArray[index + 1] * 50; // Alpha
-        //infoArray[index + 2] = Math.random();
-        //infoArray[index + 3] = Math.random();
-
-        //infoArray[index + 2] = 1.0;
-        //infoArray[index + 3] = 1.0;
-      }
-    }
-
-    const info = new THREE.DataTexture(
-      infoArray,
-      size,
-      size,
-      THREE.RGBAFormat,
-      THREE.FloatType
-    );
-    info.minFilter = THREE.NearestFilter;
-    info.needsUpdate = true;
-    fboMaterial.uniforms.uInfo.value = info;
-    material.uniforms.uInfo.value = info;
-
-    console.log("After:", [...infoArray.slice(0, 8)]);
   }
 
   function setUpParticles() {
@@ -190,8 +194,6 @@ export default function App() {
       uniforms: {
         uPosition: { value: fbo.texture }, // Initially use fbo texture
         time: { value: 0 },
-        uGravityBool: { value: true },
-        uInfo: { value: fboInfo.texture },
       },
       vertexShader: vertexParticles,
       fragmentShader: fragmentParticles,
@@ -246,6 +248,8 @@ export default function App() {
       floatArray[i] = imageData[i] / (255 / 40);
     }
 
+    console.log(floatArray);
+
     // Flat array
     imageDataArray = new Float32Array(size * size * 4); //new Array(size * size * 4);
 
@@ -254,14 +258,76 @@ export default function App() {
       let color = floatArray[position] / 255; // red channel only
       imageDataArray[i] = color;
     }
+
+    // const pds = new PoissonDiskSampling({
+    //   shape: [1, 1],
+    //   minDistance: 4 / 400,
+    //   maxDistance: 20 / 400,
+    //   tries: 4,
+    //   distanceFunction: function (point) {
+    //     let x = Math.min(Math.floor(point[0] * size), size - 1);
+    //     let y = Math.min(Math.floor(point[1] * size), size - 1);
+    //     let index = x + y * size;
+    //     return imageDataArray[index];
+    //   },
+    //   bias: 0,
+    // });
+
+    // let points = pds.fill();
+    // console.log(points);
   }
 
+  // async function loadAssets() {
+  //   const image = await load("/images/a.jpg");
+  //   let canvas = document.createElement("canvas");
+  //   let ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  //   canvas.width = size;
+  //   canvas.height = size;
+
+  //   ctx.drawImage(image, 0, 0, size, size);
+
+  //   // Corrected line: Pass correct arguments (x, y, width, height)
+  //   let imageData = ctx.getImageData(0, 0, size, size).data;
+
+  //   imageDataArray = new Array(size).fill().map(() => new Array(size).fill(0));
+  //   for (let i = 0; i < size ** 2; i++) {
+  //     // for (let j = 0; j < size; j++) {
+  //     let position = i * 4;
+  //     let color = imageData[position] / 255;
+  //     imageDataArray[i] = color;
+  //     //}
+  //   }
+
+  //   console.log(imageDataArray);
+
+  //   var pds = new PoissonDiskSampling({
+  //     shape: [1, 1],
+  //     minDistance: 4 / 400,
+  //     maxDistance: 20 / 400,
+  //     tries: 4,
+  //     distanceFunction: function (point) {
+  //       let indX = Math.floor(point[0] * size);
+  //       let indY = Math.floor(point[1] * size);
+  //       return imageDataArray[indX][indY];
+  //     },
+  //     bias: 0,
+  //   });
+
+  //   let points = pds.fill();
+  //   console.log(points);
+  // }
+
   function setupPlanes() {
-    const planeMeshFboMat = new THREE.Mesh(
+    const planeMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(2, 2),
       fboMaterial
     );
-    scene.add(planeMeshFboMat);
+    scene.add(planeMesh);
+
+    console.log(data);
+    console.log(imageData);
+    console.log(imageDataArray);
   }
 
   async function initAll() {
@@ -278,8 +344,8 @@ export default function App() {
     camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.001,
-      100
+      0.1,
+      1000
     );
     renderer = new THREE.WebGLRenderer({ canvas });
 
@@ -298,59 +364,22 @@ export default function App() {
     function renderLoop() {
       if (material && fboMaterial && fbo && fbo1) {
         time += 0.05;
-
-        // fbo1 is the current READ buffer
-        // fbo is the current WRITE buffer
-        fboMaterial.uniforms.time.value = time;
         material.uniforms.time.value = time;
+        fboMaterial.uniforms.time.value = time;
 
+        // Render to FBO (Ping-Pong Buffering)
         fboMaterial.uniforms.uPosition.value = fbo1.texture;
-        //fboMaterial.uniforms.uInfo.value = fboInfo1.texture;
+        material.uniforms.uPosition.value = fbo.texture;
 
-        // render simulation step into fbo
         renderer.setRenderTarget(fbo);
         renderer.render(fboScene, fboCamera);
-
-        renderer.setRenderTarget(null);
-        renderer.setRenderTarget(fboInfo);
-        renderer.render(fboScene, fboCamera);
-
-        // render main scene
-        material.uniforms.uPosition.value = fbo.texture;
-        //material.uniforms.uInfo.value = fboInfo.texture;
-
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
 
-        // now swap
+        // Swap FBOs
         [fbo, fbo1] = [fbo1, fbo];
-        [fboInfo, fboInfo1] = [fboInfo1, fboInfo];
       }
     }
-
-    // let time = 0;
-    // function renderLoop() {
-    //   if (material && fboMaterial && fbo && fbo1) {
-    //     time += 0.05;
-    //     material.uniforms.time.value = time;
-    //     fboMaterial.uniforms.time.value = time;
-
-    //     // Render to FBO (Ping-Pong Buffering)
-    //     fboMaterial.uniforms.uPosition.value = fbo1.texture;
-    //     material.uniforms.uPosition.value = fbo.texture;
-
-    //     fboMaterial.uniforms.uInfo.value = fbo1.texture;
-    //     material.uniforms.uInfo.value = fbo.texture;
-
-    //     renderer.setRenderTarget(fbo);
-    //     renderer.render(fboScene, fboCamera);
-    //     renderer.setRenderTarget(null);
-    //     renderer.render(scene, camera);
-
-    //     // Swap FBOs
-    //     [fbo, fbo1] = [fbo1, fbo];
-    //   }
-    // }
 
     const animate = () => {
       renderLoop();
@@ -366,28 +395,16 @@ export default function App() {
       renderer.setSize(window.innerWidth, window.innerHeight);
     };
     const handleClick = async () => {
-      await loadAssets("/images/b.jpg");
-      //setUpFbo();
-      setUpInfo();
-
-      material.uniforms.uGravityBool.value = false;
-      fboMaterial.uniforms.uGravityBool.value = false;
-
-      console.log(fboMaterial.uniforms.uInfo.value);
-      console.log(fboMaterial.uniforms.uPosition.value);
-
-      setTimeout(() => {
-        material.uniforms.uGravityBool.value = true;
-        fboMaterial.uniforms.uGravityBool.value = true;
-      }, 2000);
+      await loadAssets("/images/Home seq 3.jpg");
+      setUpFbo();
     };
 
     window.addEventListener("resize", handleResize);
-    window.addEventListener("dblclick", handleClick);
+    window.addEventListener("click", handleClick);
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("dblclick", handleClick);
+      window.removeEventListener("click", handleClick);
       controls.dispose(); // Prevent memory leaks
       renderer.dispose();
     };

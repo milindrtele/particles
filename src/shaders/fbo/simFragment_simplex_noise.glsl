@@ -3,7 +3,6 @@ uniform float progress;
 uniform sampler2D uPosition;
 uniform sampler2D uInfo;
 uniform vec4 resolution;
-uniform bool uGravityBool;
 varying vec2 vUv;
 varying vec3 vPosition;
 uniform vec2 uMouse;
@@ -118,44 +117,34 @@ vec3 curl( in vec3 p, in float noiseTime, in float persistence ) {
 }
 
 void main() {
-    vec4 posTex = texture2D(uPosition, vUv);
-    vec4 info = texture2D(uInfo, vUv);                       
-    float uGravity = 0.1;
-    vec3 mouse = vec3(uMouse, 0.0);//vec2(sin(-time), cos(-time));
+    vec4 initialPos = texture2D(uPosition, vUv);
+    vec4 pos = texture2D(uPosition, vUv);
+    vec4 info = texture2D(uInfo, vUv);
 
-    vec3 target = texture2D(uInfo, vUv).rgb;
-    float attractionStrength = 5.0;
-    //vec3 velocity;
+    vec2 mouse = uMouse;//vec2(sin(-time), cos(-time));
+
+    // float radius = length(pos.xy);
+    // float circularForce = 1. - smoothstep(0.3, 1.4, abs(pos.x - radius));
+    // float angle = atan(pos.y, pos.x) - info.y *  0.1 * mix(0.5, 1., circularForce);
+
+    // float targetRadius = mix(info.x, 1.8, 0.5 + 0.45 * sin(angle * 2. + time * 0.2));
+    // radius += (targetRadius - radius) * 0.1;
 
 
-    vec3 pos = posTex.xyz;
-    vec3 position = pos;
-    //float dist = length(pos.xy - mouse);
-    //vec2 dir = normalize(pos.xy - mouse);
+    // vec3 targetPos = vec3(cos(angle), sin(angle), 0.0) * radius;
+    // pos.xy += (targetPos.xy - pos.xy) * 0.1;
 
-    // Simulate gravity
-    vec3 gravityCenter = vec3(0.0, 0.0, 0.0); // where the particles collapse to
-    vec3 dirToCenter = normalize(mouse - pos);
-    float dist = length(mouse - pos);
-    float gravityForce = uGravity / (dist * dist + 1.0);
+    // pos.xy += curl(pos.xyz, time*0.1, 0.1).xy * 0.005;
 
-    vec3 velocity;
+    float dist = length(pos.xy - mouse);
+    vec2 dir = normalize(pos.xy - mouse);
+    //pos.xy += dir * 0.1 * smoothstep(0.3, 0.0, dist);
 
-    // Add curl noise or mouse interaction
-    //velocity.xy += curl(pos.xyz, time * 0.1, 0.1).xy * 0.0005;
 
-    if(uGravityBool){
-        velocity += dirToCenter * gravityForce;
-    }else{
-        velocity += dirToCenter * gravityForce;
-        velocity += (target - posTex.xyz) * attractionStrength/100.0 ;
-    }
 
-    pos += velocity;
-    gl_FragColor = vec4(pos, 1.0);
-    
-    // Update position
-    //pos += velocity;
+    initialPos.xy += curl(initialPos.xyz, time * 0.1, 0.1).xy * 0.000001 ;
+    initialPos.xy += dir * 0.1 * smoothstep(0.3, 0.0, dist) ;
 
-    //gl_FragColor = vec4(target, 1.0);//info;//vec4(posTex.xyz, 0.0);//vec4(pos, 1.0); 
+    gl_FragColor = initialPos;
+    //gl_FragColor = vec4(pos.xy, 1., 1.);
 }
