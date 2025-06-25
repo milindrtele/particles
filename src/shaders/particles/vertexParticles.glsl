@@ -2,6 +2,7 @@ uniform float time;
 varying vec2 vUv;
 varying vec3 vPosition;
 uniform sampler2D uPosition;
+uniform sampler2D uColor;
 uniform vec2 pixels;
 float pi = 3.141592653589793238;
 
