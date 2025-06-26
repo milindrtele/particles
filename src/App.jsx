@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { useRef, useEffect } from "react";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import load from "load-asset";
 
 import vertexParticles from "./shaders/particles/vertexParticles.glsl";
@@ -8,7 +9,7 @@ import fragmentParticles from "./shaders/particles/fragmentParticles.glsl";
 import simVertex from "./shaders/fbo/simVertex.glsl";
 import simFragment from "./shaders/fbo/simFragment.glsl";
 
-const size = 512;
+const size = 1024;
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -33,6 +34,14 @@ export default function App() {
 
   // Raw Data Buffers
   let data, imageDataArray, imageColorArray, imageData, infoArray;
+
+  let gltfLoader = new GLTFLoader();
+
+  let abstractModel = null;
+  let abstractModel_clone = null;
+  let matcapImage = null;
+
+  let textures = {};
 
   /**
    * Utility Functions
@@ -212,6 +221,11 @@ export default function App() {
     document.addEventListener("pointermove", (event) => {
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      console.log(`Pointer: ${pointer.x}, ${pointer.y}`);
+      camera.position.set(pointer.x * 5 + 5, pointer.y * 5 + 5, 15);
+      camera.lookAt(5, 5, -5);
+
       raycaster.setFromCamera(pointer, camera);
       const [intersect] = raycaster.intersectObject(invisiblePlane);
       if (intersect) {
@@ -267,16 +281,125 @@ export default function App() {
       35,
       window.innerWidth / window.innerHeight,
       0.001,
-      30
+      100
     );
-    camera.position.set(2.5, 2.5, 5);
+    camera.position.set(5, 5, 15);
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(2.5, 2.5, -5);
-    controls.update();
+    // controls = new OrbitControls(camera, renderer.domElement);
+    // controls.target.set(5, 5, -5);
+    // controls.update();
 
     scene.add(new THREE.AmbientLight(0xffffff, 5));
   };
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.ImageLoader();
+      loader.load(
+        src,
+        (image) => resolve(image),
+        undefined,
+        (err) => reject(err)
+      );
+    });
+  }
+
+  const loader = new THREE.TextureLoader();
+  function loadTexture(src) {
+    return new Promise((resolve, reject) => {
+      loader.load(
+        src,
+        (texture) => resolve(texture),
+        undefined,
+        (err) => reject(err)
+      );
+    });
+  }
+
+  function extractTileFromImage(
+    image,
+    col,
+    row,
+    totalCols = 10,
+    totalRows = 2
+  ) {
+    const tileWidth = image.width / totalCols;
+    const tileHeight = image.height / totalRows;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = tileWidth;
+    canvas.height = tileHeight;
+
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(
+      image,
+      col * tileWidth,
+      row * tileHeight,
+      tileWidth,
+      tileHeight,
+      0,
+      0,
+      tileWidth,
+      tileHeight
+    );
+
+    const matcapTexture = new THREE.CanvasTexture(canvas);
+    matcapTexture.needsUpdate = true;
+
+    return matcapTexture;
+  }
+
+  function setupModel() {
+    gltfLoader.load("/models/abstract_art.glb", (gltf) => {
+      abstractModel = gltf.scene;
+      abstractModel.position.set(-8, 5, -15);
+      abstractModel.scale.set(5, 5, 5);
+
+      //abstractModel_clone = abstractModel.clone();
+      //abstractModel_clone.position.set(10, 5, 0);
+      //abstractModel_clone.scale.set(2, 2, 2);
+
+      // Step 1: Load the matcap atlas image once
+      loadImage("/images/textures/matcap-combined-resized.jpg").then(
+        async (image) => {
+          matcapImage = image;
+          // Step 2: Choose a tile (you can change this dynamically later)
+          const matcapTexture = extractTileFromImage(image, 0, 0);
+
+          // Await the texture loading
+          const [bumpMap, displacementMap] = await Promise.all([
+            loadTexture("/images/textures/bump.png"),
+            loadTexture("/images/textures/bump.png"),
+          ]);
+
+          textures = { bumpMap, displacementMap };
+
+          const material = new THREE.MeshMatcapMaterial({
+            matcap: matcapTexture,
+            bumpMap: textures.bumpMap,
+            displacementMap: textures.displacementMap,
+            displacementScale: 0.05,
+          });
+
+          abstractModel.traverse((child) => {
+            if (child.isMesh) {
+              child.material = material;
+            }
+          });
+
+          //abstractModel_clone.traverse((child) => {
+          //  if (child.isMesh) {
+          //    child.material = material;
+          //  }
+          //});
+
+          scene.add(abstractModel);
+          //scene.add(abstractModel_clone);
+        }
+      );
+    });
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -287,6 +410,7 @@ export default function App() {
       setUpFBOs();
       setUpParticles();
       setUpMouseEvents();
+      setupModel();
     })();
 
     let time = 0;
@@ -332,6 +456,38 @@ export default function App() {
 
     let image_index = 0;
     let gravityTimeout = null;
+    let matcapColumn = 0;
+    let matcapRow = 0;
+
+    function updateMatcapTexture(matcapColumn, matcapRow) {
+      if (!matcapImage) return;
+
+      //switch model material
+      const matcapTexture = extractTileFromImage(
+        matcapImage,
+        matcapColumn,
+        matcapRow
+      );
+
+      const materialnew = new THREE.MeshMatcapMaterial({
+        matcap: matcapTexture,
+        bumpMap: textures.bumpMap,
+        displacementMap: textures.displacementMap,
+        displacementScale: 0.05,
+      });
+
+      abstractModel.traverse((child) => {
+        if (child.isMesh) {
+          child.material = materialnew;
+        }
+      });
+      //abstractModel_clone.traverse((child) => {
+      //  if (child.isMesh) {
+      //    child.material = materialnew;
+      //  }
+      //});
+    }
+
     const handleClick = async () => {
       await loadAssets(imagesSrc[image_index]);
       image_index = (image_index + 1) % imagesSrc.length;
@@ -343,10 +499,19 @@ export default function App() {
       if (gravityTimeout) {
         clearTimeout(gravityTimeout);
       }
-      gravityTimeout = setTimeout(() => {
-        material.uniforms.uGravityBool.value = true;
-        fboMaterial.uniforms.uGravityBool.value = true;
-      }, 2000);
+
+      if (abstractModel) {
+        gravityTimeout = setTimeout(() => {
+          material.uniforms.uGravityBool.value = true;
+          fboMaterial.uniforms.uGravityBool.value = true;
+        }, 2000);
+
+        matcapColumn = (matcapColumn + 1) % 10;
+        if (matcapColumn === 0) {
+          matcapRow = (matcapRow + 1) % 2;
+        }
+        updateMatcapTexture(matcapColumn, matcapRow);
+      }
     };
 
     window.addEventListener("resize", handleResize);
@@ -355,7 +520,7 @@ export default function App() {
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("dblclick", handleClick);
-      controls.dispose();
+      //controls.dispose();
       renderer.dispose();
     };
   }, []);
