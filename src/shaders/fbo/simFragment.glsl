@@ -120,7 +120,7 @@ vec3 curl( in vec3 p, in float noiseTime, in float persistence ) {
 void main() {
     vec4 posTex = texture2D(uPosition, vUv);
     vec4 info = texture2D(uInfo, vUv);                       
-    float uGravity = 0.1;
+    float uGravity = 1.0;
     vec3 mouse = vec3(uMouse, 0.0);//vec2(sin(-time), cos(-time));
 
     vec3 target = texture2D(uInfo, vUv).rgb;
@@ -145,9 +145,9 @@ void main() {
     //velocity.xy += curl(pos.xyz, time * 0.1, 0.1).xy * 0.0005;
 
     if(uGravityBool){
-        velocity += dirToCenter * gravityForce;
+        velocity += dirToCenter * gravityForce * (dist/10.0);
     }else{
-        velocity += dirToCenter * gravityForce;
+        //velocity += dirToCenter * gravityForce;
         velocity += (target - posTex.xyz) * attractionStrength/100.0 ;
     }
 

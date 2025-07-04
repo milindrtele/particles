@@ -132,6 +132,7 @@ export default function App() {
       uniforms: {
         uPosition: { value: fboTexture },
         uColor: { value: colorTexture },
+        uOldColor: { value: colorTexture },
         uInfo: { value: null },
         time: { value: 0 },
         uMouse: { value: new THREE.Vector2(0, 0) },
@@ -195,6 +196,7 @@ export default function App() {
       uniforms: {
         uPosition: { value: fbo.texture },
         uColor: { value: colorTexture },
+        uOldColor: { value: colorTexture },
         time: { value: 0 },
         uGravityBool: { value: true },
         uInfo: { value: fboInfo.texture },
@@ -222,9 +224,8 @@ export default function App() {
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-      console.log(`Pointer: ${pointer.x}, ${pointer.y}`);
-      camera.position.set(pointer.x * 5 + 5, pointer.y * 5 + 5, 15);
-      camera.lookAt(5, 5, -5);
+      //camera.position.set(pointer.x * 5 + 5, pointer.y * 5 + 5, 15);
+      //camera.lookAt(5, 5, -5);
 
       raycaster.setFromCamera(pointer, camera);
       const [intersect] = raycaster.intersectObject(invisiblePlane);
@@ -252,6 +253,8 @@ export default function App() {
     );
     info.needsUpdate = true;
 
+    const oldTexture = colorTexture;
+
     colorTexture = new THREE.DataTexture(
       imageColorArray,
       size,
@@ -264,6 +267,7 @@ export default function App() {
     fboMaterial.uniforms.uInfo.value = info;
     material.uniforms.uInfo.value = info;
     material.uniforms.uColor.value = colorTexture;
+    material.uniforms.uOldColor.value = oldTexture;
   };
 
   /**
@@ -285,9 +289,9 @@ export default function App() {
     );
     camera.position.set(5, 5, 15);
 
-    // controls = new OrbitControls(camera, renderer.domElement);
-    // controls.target.set(5, 5, -5);
-    // controls.update();
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(5, 5, -5);
+    controls.update();
 
     scene.add(new THREE.AmbientLight(0xffffff, 5));
   };
@@ -499,13 +503,12 @@ export default function App() {
       if (gravityTimeout) {
         clearTimeout(gravityTimeout);
       }
+      gravityTimeout = setTimeout(() => {
+        material.uniforms.uGravityBool.value = true;
+        fboMaterial.uniforms.uGravityBool.value = true;
+      }, 1000);
 
       if (abstractModel) {
-        gravityTimeout = setTimeout(() => {
-          material.uniforms.uGravityBool.value = true;
-          fboMaterial.uniforms.uGravityBool.value = true;
-        }, 2000);
-
         matcapColumn = (matcapColumn + 1) % 10;
         if (matcapColumn === 0) {
           matcapRow = (matcapRow + 1) % 2;
@@ -520,7 +523,7 @@ export default function App() {
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("dblclick", handleClick);
-      //controls.dispose();
+      controls.dispose();
       renderer.dispose();
     };
   }, []);
