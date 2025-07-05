@@ -22,8 +22,6 @@ void main() {
 
         color += velocity;
 
-        
-
         vec4 A = clamp(velocity, 0.0, 1.0);
 
 
